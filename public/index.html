@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Picker Extension</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="mainContainer">
+        <div  class="ampx-frame b-image-wrapper">
+            <div class="b-image-left">
+                <div id="imageContainer" class="b-image-container"></div>
+
+                <div class="b-image-actions_container">
+                    <button class="ampx-button ampx-button__primary" id="openPopupBtn">
+                        Open Image Picker
+                    </button>
+                    <button class="ampx-button ampx-button__accent" id="deleteImageBtn">
+                        Delete Image
+                    </button>
+                </div>
+            </div>
+
+            <div class="b-image-right" id="imageFormatContainer">
+                <div class="b-image-property_group">
+                    <div class="b-image-property_label">image</div>
+                    <div class="b-image-property_value">49330_COL_OHI_Hero_PP_SM.jpeg</div>
+                </div>
+
+                <div class="b-image-property_group">
+                    <div class="b-image-property_label">image format</div>
+                    <form id="formatSelector" class="b-image-property_list b-format_selector">
+                        <label class="b-image-property_value">
+                            <input type="radio" name="format" value="pjpeg" checked> Progressive JPG
+                        </label>
+                        <label class="b-image-property_value">
+                            <input type="radio" name="format" value="jpg"> JPG
+                        </label>
+                        <label class="b-image-property_value">
+                            <input type="radio" name="format" value="png"> PNG
+                        </label>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Popup -->
+    <div id="popup" class="popup">
+        <div class="popup-header">
+            <div class="popup-title">Select an Image</div>
+            <div class="popup-actions">
+                <button class="ampx-button ampx-button__primary popup-close" id="cancelBtn">Close</button>
+            </div>
+        </div>
+
+        <div class="popup-body">
+            <div class="popup-content">
+                <div class="popup-sidebar">
+                    <div class="rightHead">
+                        <div class="navigation" style="padding-top: 16px;">
+                            <button class="folders-search" id="searchFld">Search in folders</button>
+                            <button class="popup-search" id="searchTxt">Search by name</button>
+                        </div>
+                    </div>
+                    <div id="searchPanel" style="display: none;">
+                        <div class="b-search-box">
+                            <!-- <label for="searchInput">Enter keyword:</label> -->
+                            <input type="text" id="searchInput" class="b-search-input" placeholder="Enter keyword">
+                            <button id="searchBtn" class="ampx-button ampx-button__primary b-search-button">
+                                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 20.3 20.3" style="enable-background:new 0 0 20.3 20.3;" xml:space="preserve" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false">
+                                    <path d="M20.3,18.6l-5.8-5.8c2.3-3.1,2.1-7.6-0.8-10.4c-3.1-3.1-8.2-3.1-11.3,0C0.8,3.9,0,5.9,0,8c0,2.1,0.8,4.2,2.3,5.7
+                                    S5.9,16,8,16c1.7,0,3.4-0.6,4.8-1.6l5.8,5.8L20.3,18.6z M3.6,12.4C2.4,11.3,1.7,9.7,1.7,8c0-1.7,0.7-3.3,1.8-4.4
+                                    C4.8,2.4,6.4,1.7,8,1.7c1.6,0,3.2,0.6,4.4,1.8c2.4,2.4,2.4,6.4,0,8.9c-1.2,1.2-2.8,1.8-4.4,1.8C6.3,14.3,4.8,13.6,3.6,12.4z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+    
+                    <div class="sidebar-group">
+                        <div class="sidebar-group_title">Folders</div>
+                        <div id="folderStructure" class="folder-structure sidebar-group_list"></div>
+                    </div>
+                </div>
+    
+                <div class="popup-main">
+                    <div class="popup-main_actions">
+                        <div id="paginator" class="b-pagination">
+                            <button id="prevBtn" class="b-pagination_link" disabled>&lt;</button>
+                            <span id="currentPage" class="b-pagination_info"></span>
+                            <button id="nextBtn" class="b-pagination_link" disabled>&gt;</button>
+                        </div>
+        
+                        <button class="ampx-button ampx-button__secondary popup-upload" id="uploadBtn">
+                            <span class="ampx-button_inner">
+                                <span class="ampx-button_icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus" width="24" height="24" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </span>
+                                <span class="ampx-button_text">Upload new image</span>
+                            </span>
+                        </button>
+                    </div>
+                    <div id="images" class="images-grid"></div>
+                </div>
+            </div>
+
+            <div id="loader" class="popup-loader" style="display: none;">
+                <div class="am-spinner">
+                    <span class="am-spinner__bounce am-spinner__bounce--1"></span>
+                    <span class="am-spinner__bounce am-spinner__bounce--2"></span>
+                    <span class="am-spinner__bounce am-spinner__bounce--3"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploadPopup" class="popup" style="display: none;">
+        <div class="popup-header">
+            <div class="popup-title">Upload</div>
+            <button class="popup-close ampx-button ampx-button__primary" id="closeUploadPopupBtn">Close</button>
+        </div>
+
+        <div class="popup-body">
+            <form id="uploadForm">
+                <label for="imageTitle">File Title:</label>
+                <input type="text" id="imageTitle" name="imageTitle" placeholder="File Title" required>
+
+                <label for="imageFile">Select File:</label>
+                <input type="file" id="imageFile" name="imageFile" accept="image/*" required>
+
+                <button type="submit" class="ampx-button ampx-button__primary">Upload</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/dc-extensions-sdk@^2/dist/dc-extensions-sdk.umd.js"></script>
+    <script src="/js/script.js"></script>
+</body>
+</html>
