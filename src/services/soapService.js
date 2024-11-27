@@ -17,10 +17,6 @@ function createHeader() {
 
 function createRequest(fld, page, video) {
     const typeArray = (video === 'true') ? 'Video' : 'Image';
-
-    console.log('VIDEO: ' + video, typeArray);
-
-
     const folder = fld ? fld : rootFldr;
     const header = createHeader();
     const req = `<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">${header}
@@ -33,7 +29,7 @@ function createRequest(fld, page, video) {
                         <assetTypeArray>
                             <items>${typeArray}</items>
                         </assetTypeArray>
-                        <recordsPerPage>10</recordsPerPage>
+                        <recordsPerPage>12</recordsPerPage>
                         <resultsPage>${page}</resultsPage>
                         <sortBy>Modified</sortBy>
                         <sortDirection>Descending</sortDirection>
@@ -65,7 +61,6 @@ async function searchFolders(fld) {
                 'SOAPAction': 'getFolderTree'
             }
         });
-
         const parser = new xml2js.Parser({ explicitArray: false });
         const parsedData = await new Promise((resolve, reject) => {
             parser.parseString(response.data, (err, result) => {
@@ -80,7 +75,7 @@ async function searchFolders(fld) {
         folder = folder.charAt(0) === '/' ? folder.substr(1) : folder;
         const parent = (folder !== rootFldr) ? folder.substring(0, folder.lastIndexOf("/", folder.length - 2) + 1) : folder;
 
-        let parentFolder = { name: parent.split('/').reverse()[1], folder: parent, isParent: true };
+        let parentFolder = { name: folder.split('/').reverse()[1], folder: parent, isParent: true };
         let parsedFolders = [parentFolder];
         const resultObject = parsedData['soapenv:Envelope']['soapenv:Body']['getFolderTreeReturn']['folders'];
 
@@ -110,6 +105,7 @@ async function searchFolders(fld) {
 async function searchAssets(fld, page, video) {
     var page = page || 1;
     const req = createRequest(fld, page, video)
+
     try {
         const response = await axios.post(serviceUrl, req, {
             headers: {
@@ -131,7 +127,7 @@ async function searchAssets(fld, page, video) {
 
         const assets = parsedData['soapenv:Envelope']['soapenv:Body']['searchAssetsReturn']['assetArray']['items'];
         const totalItems = parsedData['soapenv:Envelope']['soapenv:Body']['searchAssetsReturn']['totalRows'];
-        console.log(assets);
+
         let pages = 0;
         if (totalItems) {
             pages = parseInt(totalItems)/10;
@@ -230,7 +226,7 @@ async function uploadFile(fileBuffer, fileName, destFolder) {
     }
 }
 // search by keyword
-function buildGetSearchAssetsParamXML(folderPath, recordsPerPage = 10, resultsPage, includeSubfolders, keyword, typeArray) {
+function buildGetSearchAssetsParamXML(folderPath, recordsPerPage = 12, resultsPage, includeSubfolders, keyword, typeArray) {
     let actionPayload = `
         <searchAssetsParam xmlns="${namespace}">
             <companyHandle>${companyHandle}</companyHandle>`;
@@ -275,11 +271,10 @@ function buildGetSearchAssetsParamXML(folderPath, recordsPerPage = 10, resultsPa
     return actionPayload;
 }
 
-async function searchByKeyword(keyword, folderPath = '', page = 1, recordsPerPage = 10, video = false) {
+async function searchByKeyword(keyword, folderPath = '', page = 1, recordsPerPage = 12, video = false) {
     const typeArray = (video === 'true') ? 'Video' : 'Image';
     const includeSubfolders = true;
     const header = createHeader()
-console.log(recordsPerPage);
 
     const requestXML = `
         <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">

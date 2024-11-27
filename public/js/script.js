@@ -13,9 +13,14 @@ const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const searchResults = document.getElementById('searchResults');
 const searchTxt = document.getElementById('searchTxt');
-const toggleButton = document.getElementById('toggleButton');
 const formatSelector = document.getElementById('formatSelector');
-let video = false;
+const mediaType = document.getElementById('mediaType');
+const mediaName = document.getElementById('mediaName');
+const deleteImageBtn = document.getElementById('deleteImageBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+const openPopupBtn = document.getElementById('openPopupBtn');
+const imageContainer = document.getElementById('imageContainer');
+let video;
 class Extension {
     constructor(sdk) {
         this.sdk = sdk;
@@ -24,12 +29,18 @@ class Extension {
 
     init = () => {
         this.setupEventListeners();
+        if (this.sdk.params) {
+            video = this.sdk.params.instance.video ? this.sdk.params.instance.video: false;
+            mediaType.innerHTML = video ? 'Video' : 'Image';
+            openPopupBtn.innerHTML = video ? 'Open Video picker' : 'Open Image picker';
+        }
         this.loadCurrentValue();
     }
 
     setupEventListeners = () => {
-        document.getElementById('openPopupBtn').addEventListener('click', this.openPopup);
-        document.getElementById('cancelBtn').addEventListener('click', this.closePopup);
+        openPopupBtn.addEventListener('click', this.openPopup);
+        cancelBtn.addEventListener('click', this.closePopup);
+        deleteImageBtn.addEventListener('click', this.deleteValue);
         imagesContainer.addEventListener('click', (event) => {
             if (event.target.classList.contains('image-option')) {
                 const imgSrc = event.target.dataset.src;
@@ -40,20 +51,8 @@ class Extension {
         folderStructure.addEventListener('click', (event) => {
             if (event.target.classList.contains('folder')) {
                 const folderID = event.target.id;
-                //console.log(folderID);
                 this.fillPopup(folderID);
             }
-        });
-        formatSelector.addEventListener('change', (event) => {
-            let selectedFormat = event.target.value;
-            console.log('Selected format:', selectedFormat);
-
-            let url = document.getElementById("selectedImage").src;
-            let urlObj = new URL(url);
-            urlObj.search = '';
-            urlObj.searchParams.set('fmt', selectedFormat);
-            let newUrl = urlObj.toString();
-            this.setValue(newUrl);
         });
     }
     fillPopup = async (folderID) => {
@@ -77,45 +76,32 @@ class Extension {
     setValue = async (value) => {
         await this.sdk.field.setValue(value);
     }
+
+    deleteValue = async () => {
+        await this.sdk.field.setValue('');
+        imageContainer.innerHTML = '';
+        mediaName.innerHTML = '';
+    }
     selectImage = async (src, prodSrc) => {
         try {
             const img = document.createElement('img');
             img.src = src;
             let prodValue = prodSrc ? prodSrc : src;
             img.id = 'selectedImage';
-            const container = document.getElementById('imageContainer');
-            container.innerHTML = '';
-            container.appendChild(img);
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(img);
 
             fetch(prodValue).then(response => {
                 let headers = response.headers.get('Content-Type')
                 console.log(response.headers.get('Content-Type'));
                 if (headers==  'video/mp4') {
-                    formatSelector.style.display = 'none';
                     img.src = prodValue.replace('content', 'image');
-                } else {
-                    formatSelector.style.display = 'block';
-                    const urlObj = new URL(prodValue);
-
-                    let fmt = urlObj.searchParams.get("fmt");
-
-                    console.log(prodValue, fmt, urlObj);
-
-                    if  (fmt) {
-                        console.log(fmt);
-                        let neededRadio = document.querySelector(`input[name="format"][value="${fmt}"]`);
-                        neededRadio.checked = true;
-                    } else {
-                        let defaultValue = document.querySelector('input[name="format"][value="pjpeg"]');
-                        defaultValue.checked = true;
-                    }
-                    let selectedRadio = document.querySelector('input[name="format"]:checked');
-                    urlObj.searchParams.set('fmt', selectedRadio.value);
-                    prodValue = urlObj.toString();
                 }
             });
 
             this.setValue(prodValue);
+            let name = src.split('/').pop();
+            mediaName.innerHTML = name;
             this.closePopup();
             this.sdk.frame.setHeight(300)
 
@@ -141,7 +127,7 @@ async function fetchFolders(folderID) {
     try {
         const response = await fetch(`/search-folders${qstring}`);
         const folders = await response.json();
-       // console.log('Fetched folders:', folders);
+
         const ul = document.createElement('ul');
         ul.classList.add('folder-list');
         const folderIcon = `
@@ -191,8 +177,7 @@ async function fetchAssets(folderID = '', page = 1) {
     prevBtn.dataset.folder = folderID;
     nextBtn.dataset.function = 'fetchAssets';
     nextBtn.dataset.folder = folderID;
-    toggleButton.dataset.function = 'fetchAssets';
-    toggleButton.dataset.folder = folderID;
+
 }
 
 (async function  () {
@@ -222,7 +207,7 @@ uploadForm.addEventListener('submit', async (event) => {
     const formData = new FormData(uploadForm);
     const selectedFile = formData.get('imageFile');
     const fileName = formData.get('imageTitle') || selectedFile.name;
-    const destFolder = toggleButton.dataset.folder || '';
+    const destFolder = nextBtn.dataset.folder || '';
 
     if (!selectedFile) {
         alert('Please select a file to upload');
@@ -326,7 +311,6 @@ async function searchByText({ keyword, folderPath = '', page = 1 }) {
     }
     prevBtn.dataset.function = 'searchByText';
     nextBtn.dataset.function = 'searchByText';
-    toggleButton.dataset.function = 'searchByText';
 }
 
 
@@ -336,7 +320,6 @@ searchBtn.addEventListener('click', () => {
         searchByText({ keyword, page: 1 });
         prevBtn.dataset.function = 'searchByText';
         nextBtn.dataset.function = 'searchByText';
-        toggleButton.dataset.function = 'searchByText';
     } else {
         alert('Please enter a keyword for search.');
     }
@@ -387,24 +370,3 @@ function enableUpload() {
 }
 
 searchFld.addEventListener('click', showFolderPanel);
-
-toggleButton.addEventListener('click', () => {
-    if (toggleButton.textContent === 'Switch to Video') {
-        toggleButton.textContent = 'Switch to Image';
-        video = true;
-
-    } else {
-        toggleButton.textContent = 'Switch to Video';
-        video = false;
-    }
-
-    const currentFunction = toggleButton.dataset.function;
-    const folder = toggleButton.dataset.folder || '';
-    const keyword = searchInput.value.trim();
-
-    if (currentFunction === 'fetchAssets') {
-        fetchAssets(folder);
-    } else if (currentFunction === 'searchByText') {
-        searchByText({ keyword });
-    }
-});

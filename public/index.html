@@ -17,30 +17,15 @@
                         Open Image Picker
                     </button>
                     <button class="ampx-button ampx-button__accent" id="deleteImageBtn">
-                        Delete Image
+                        Delete
                     </button>
                 </div>
             </div>
 
-            <div class="b-image-right" id="imageFormatContainer">
+            <div class="b-image-right">
                 <div class="b-image-property_group">
-                    <div class="b-image-property_label">image</div>
-                    <div class="b-image-property_value">49330_COL_OHI_Hero_PP_SM.jpeg</div>
-                </div>
-
-                <div class="b-image-property_group">
-                    <div class="b-image-property_label">image format</div>
-                    <form id="formatSelector" class="b-image-property_list b-format_selector">
-                        <label class="b-image-property_value">
-                            <input type="radio" name="format" value="pjpeg" checked> Progressive JPG
-                        </label>
-                        <label class="b-image-property_value">
-                            <input type="radio" name="format" value="jpg"> JPG
-                        </label>
-                        <label class="b-image-property_value">
-                            <input type="radio" name="format" value="png"> PNG
-                        </label>
-                    </form>
+                    <div class="b-image-property_label" id="mediaType"></div>
+                    <div class="b-image-property_value" id="mediaName"></div>
                 </div>
             </div>
         </div>
@@ -77,13 +62,13 @@
                             </button>
                         </div>
                     </div>
-    
+
                     <div class="sidebar-group">
                         <div class="sidebar-group_title">Folders</div>
                         <div id="folderStructure" class="folder-structure sidebar-group_list"></div>
                     </div>
                 </div>
-    
+
                 <div class="popup-main">
                     <div class="popup-main_actions">
                         <div id="paginator" class="b-pagination">
@@ -91,13 +76,13 @@
                             <span id="currentPage" class="b-pagination_info"></span>
                             <button id="nextBtn" class="b-pagination_link" disabled>&gt;</button>
                         </div>
-        
+
                         <button class="ampx-button ampx-button__secondary popup-upload" id="uploadBtn">
                             <span class="ampx-button_inner">
                                 <span class="ampx-button_icon">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus" width="24" height="24" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                 </span>
-                                <span class="ampx-button_text">Upload new image</span>
+                                <span class="ampx-button_text">Upload</span>
                             </span>
                         </button>
                     </div>
