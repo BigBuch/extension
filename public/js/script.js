@@ -45,7 +45,15 @@ class Extension {
         openPopupBtn.addEventListener('click', this.openPopup);
         cancelBtn.addEventListener('click', this.closePopup);
         deleteImageBtn.addEventListener('click', this.deleteValue);
+        
         imagesContainer.addEventListener('click', (event) => {
+            if (event.target.closest('.image-item_hover')) {
+                const imageWrapper = event.target.closest('.image-item').querySelector('.image-option');
+                const imgSrc = imageWrapper.dataset.src;
+                const prodSrc = imageWrapper.dataset.prodUrl;
+                this.selectImage(imgSrc, prodSrc);
+            }
+            
             if (event.target.classList.contains('image-option')) {
                 const imgSrc = event.target.dataset.src;
                 const prodSrc = event.target.dataset.prodUrl;
@@ -360,7 +368,19 @@ function renderImages(assets, currentPage, totalPages) {
         imgItem.className = 'image-item';
         imgItem.innerHTML = `<div class="image-name">${item.name}</div>`;
 
-        imagesContainer.appendChild(imgItem).appendChild(imgWrapper);
+        const imgItemHover = document.createElement('div');
+        imgItemHover.className = 'image-item_hover';
+        imgItemHover.innerHTML = `
+            <div class="image-item_hover_icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51.4 51.4" fill="none" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false">
+                    <circle class="circle" r="22.7" cx="25.7" cy="25.7" stroke-width="2" stroke="currentColor"></circle>
+                    <path class="plus" d="M26.7,24.7h9.5 v2h-9.5v9.5h-2v-9.5h-9.5v-2h9.5v-9.5h2V24.7z" fill="currentColor"></path>
+                </svg>
+            </div>
+        `;
+        imgItem.appendChild(imgWrapper);
+
+        imagesContainer.appendChild(imgItem).appendChild(imgItemHover);
     });
 
     currentPageElement.innerText = `${currentPage} of ${totalPages}`;
