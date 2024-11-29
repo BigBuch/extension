@@ -562,6 +562,7 @@ body {
     display: block;
     height: 100%;
     overflow-y: auto;
+    max-height: 627px;
 }
 
 .tab-navigation {
