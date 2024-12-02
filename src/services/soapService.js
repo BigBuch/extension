@@ -141,6 +141,10 @@ async function searchAssets(fld, page, video) {
         let parsedAssets = [];
         let isImage = !(video==='true');
         let prodUrl = isImage ? imageProdURL : videoProdURL ;
+
+
+        console.log(assets[1].metadataArray);
+
         if (Array.isArray(assets)) {
             parsedAssets = assets.map(asset => ({
                 type: asset.type,

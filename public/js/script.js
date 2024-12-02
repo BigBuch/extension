@@ -52,18 +52,8 @@ class Extension {
         imagesContainer.addEventListener('click', async (event) => {
             if (event.target.closest('.image-item_hover')) {
                 const imageWrapper = event.target.closest('.image-item').querySelector('.image-option');
-                const imgSrc = imageWrapper.dataset.src;
-                const prodSrc = imageWrapper.dataset.prodUrl;
-
                 let imageObject =  await createImageObject(imageWrapper.dataset);
-                console.log(imageObject);
                 this.selectImage(imageObject);
-            }
-
-            if (event.target.classList.contains('image-option')) {
-                const imgSrc = event.target.dataset.src;
-                const prodSrc = event.target.dataset.prodUrl;
-                this.selectImage(imgSrc, prodSrc);
             }
         });
         folderStructure.addEventListener('click', (event) => {
@@ -107,30 +97,32 @@ class Extension {
         imageContainer.innerHTML = '';
         mediaName.innerHTML = ""
     }
-    selectImage = async (src, prodSrc) => {
-        try {
-            const img = document.createElement('img');
-            img.src = src.preview_src;
-            img.id = 'selectedImage';
-            imageContainer.innerHTML = '';
-            imageContainer.appendChild(img);
+    selectImage = async (src) => {
+        if (src.preview_src) {
+            try {
+                const img = document.createElement('img');
+                img.src = src.preview_src;
+                img.id = 'selectedImage';
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(img);
 
-            this.setValue(src);
 
-            let srcValue = src.preview_src;
-            let name = srcValue.split('/').pop();
+                this.setValue(src);
 
-            if(name) {
-                mediaName.innerHTML = `
-                    <div class="b-image-property_label">${mediaTypeName}</div>
-                    <div class="b-image-property_value">${name}</div>
-                `;
+                let srcValue = src.preview_src;
+                let name = srcValue.split('/').pop();
+
+                if(name) {
+                    mediaName.innerHTML = `
+                        <div class="b-image-property_label">${mediaTypeName}</div>
+                        <div class="b-image-property_value">${name}</div>
+                    `;
+                }
+                    this.closePopup();
+                } catch (error) {
+                console.error('Error selecting image:', error);
+                //alert('Error selecting image');
             }
-            this.closePopup();
-
-        } catch (error) {
-            console.error('Error selecting image:', error);
-            alert('Error selecting image');
         }
     }
 
@@ -138,7 +130,6 @@ class Extension {
         try {
             const value = await this.sdk.field.getValue();
             if (value) {
-                console.log('Value:', value);
                 this.selectImage(value);
             }
         } catch (error) {
@@ -404,41 +395,52 @@ async function createImageObject(data) {
     let fileName = data.fileName;
     let nameArray = fileName.split('_');
     let size = nameArray.pop();
-    let queryText = nameArray.join('_');
-    const response = await fetch(`/search-by-text?keyword=${queryText}`);
-
-    if (!response || !response.ok) {
-        throw new Error('Failed to fetch search results');
-    }
-
-    const resp = await response.json();
-    if (!resp) {
-        throw new Error('No data received from server');
-    }
-
-    const { assets = [] } = resp;
-    let sazesArray = ['SM', 'MD', 'LG', 'XL'];
     let modifiers =[];
+    let sazesArray = ['SM', 'MD', 'LG', 'XL'];
 
-    assets.forEach(asset => {
-        let nameArray = asset.assetProdUrl.split('_');
-        let size = nameArray.pop();
+    if ((sazesArray.indexOf(size)!==-1)&&video==false) {
 
-        if (sazesArray.indexOf(size)!==-1) {
-            let sizeData = {
-                prodsrc: asset.assetProdUrl,
-                stgsrc: asset.assetStgUrl,
-                width: asset.assetWidth,
-                height: asset.assetHeight
+        let queryText = nameArray.join('_');
+        // avoiding searchin all assets
+        if (queryText.length > 0) {
+            const response = await fetch(`/search-by-text?keyword=${queryText}`);
+
+            if (!response || !response.ok) {
+                throw new Error('Failed to fetch search results');
             }
-            modifiers.push(sizeData);
+
+            const resp = await response.json();
+            if (!resp) {
+                throw new Error('No data received from server');
+            }
+
+            const { assets = [] } = resp;
+
+
+            assets.forEach(asset => {
+                let nameArray = asset.assetProdUrl.split('_');
+                let size = nameArray.pop();
+
+                if (sazesArray.indexOf(size)!==-1) {
+                    let sizeData = {
+                        prodsrc: asset.assetProdUrl,
+                        stgsrc: asset.assetStgUrl,
+                        width: asset.assetWidth,
+                        height: asset.assetHeight,
+                    }
+
+                    modifiers.push(sizeData);
+                }
+            });
         }
-    });
+    }
 
     return {
         "images": modifiers,
-        "preview_src":data.stgUrl,
-        "defaultProd_src":data.prodUrl
+        "preview_src": data.stgUrl,
+        "defaultProd_src": data.prodUrl,
+        "default_width": data.width||'',
+        "default_height": data.height||'',
     };
 }
 
