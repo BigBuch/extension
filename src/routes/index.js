@@ -3,7 +3,14 @@ const router = express.Router();
 const multer = require('multer');
 const { searchAssets, searchFolders, uploadFile, searchByKeyword} = require('../services/soapService');
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+
+
+const upload = multer({
+    storage,
+    limits: {
+    fileSize: 50 * 1024 * 1024
+}});
+
 const cors = require('cors');
 
 
@@ -19,7 +26,7 @@ const corsOptions = {
     }
 };
 
-router.use(cors(corsOptions));
+router.use(cors());
 
 router.get('/search-assets', async (req, res) => {
     try {
@@ -31,7 +38,7 @@ router.get('/search-assets', async (req, res) => {
     }
 });
 
-// Роут для пошуку папок
+
 router.get('/search-folders', async (req, res) => {
     try {
         const { folderID } = req.query;
