@@ -13,7 +13,7 @@ const upload = multer({
 
 const cors = require('cors');
 
-
+// draft
 const allowedDomains = ['https://amplience.net'];
 const corsOptions = {
     origin: (origin, callback) => {

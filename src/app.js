@@ -6,9 +6,8 @@ const PORT = 3000;
 // Import routes
 const homeRoutes = require('./routes/index');
 
-// Middleware для обробки JSON та URL-encoded даних
-app.use(express.json()); // Для обробки JSON-даних
-app.use(express.urlencoded({ extended: true })); // Для обробки даних із форм
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
