@@ -20,6 +20,10 @@ const deleteImageBtn = document.getElementById('deleteImageBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const openPopupBtn = document.getElementById('openPopupBtn');
 const imageContainer = document.getElementById('imageContainer');
+const uploadPopup = document.getElementById('uploadPopup');
+const closeUploadPopupBtn = document.getElementById('closeUploadPopupBtn');
+const uploadForm = document.getElementById('uploadForm');
+
 let video;
 let mediaTypeName;
 
@@ -28,7 +32,6 @@ class Extension {
         this.sdk = sdk;
         this.init();
     }
-
     init = () => {
         this.setupEventListeners();
         if (this.sdk.params) {
@@ -45,19 +48,12 @@ class Extension {
         openPopupBtn.addEventListener('click', this.openPopup);
         cancelBtn.addEventListener('click', this.closePopup);
         deleteImageBtn.addEventListener('click', this.deleteValue);
-        
-        imagesContainer.addEventListener('click', (event) => {
+
+        imagesContainer.addEventListener('click', async (event) => {
             if (event.target.closest('.image-item_hover')) {
                 const imageWrapper = event.target.closest('.image-item').querySelector('.image-option');
-                const imgSrc = imageWrapper.dataset.src;
-                const prodSrc = imageWrapper.dataset.prodUrl;
-                this.selectImage(imgSrc, prodSrc);
-            }
-            
-            if (event.target.classList.contains('image-option')) {
-                const imgSrc = event.target.dataset.src;
-                const prodSrc = event.target.dataset.prodUrl;
-                this.selectImage(imgSrc, prodSrc);
+                let imageObject =  await createImageObject(imageWrapper.dataset);
+                this.selectImage(imageObject);
             }
         });
         folderStructure.addEventListener('click', (event) => {
@@ -74,14 +70,12 @@ class Extension {
         loader.style.display = 'none';
 
     }
-
     openPopup = async () => {
         imagesContainer.innerHTML = '';
         popup.style.display = 'block';
         folderStructure.style.display = 'block';
         this.sdk.frame.setHeight(696)
         await this.fillPopup();
-        
     }
 
     closePopup = () => {
@@ -95,41 +89,40 @@ class Extension {
     }
 
     deleteValue = async () => {
-        await this.sdk.field.setValue('');
+        await this.sdk.field.setValue({
+            "images": [],
+            "preview_src":"",
+            "defaultProd_src":""
+        });
         imageContainer.innerHTML = '';
-        mediaName.innerHTML = '';
+        mediaName.innerHTML = ""
     }
+    selectImage = async (src) => {
+        if (src.preview_src) {
+            try {
+                const img = document.createElement('img');
+                img.src = src.preview_src;
+                img.id = 'selectedImage';
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(img);
 
-    selectImage = async (src, prodSrc) => {
-        try {
-            const img = document.createElement('img');
-            img.src = src;
-            let prodValue = prodSrc ? prodSrc : src;
-            img.id = 'selectedImage';
-            imageContainer.innerHTML = '';
-            imageContainer.appendChild(img);
 
-            fetch(prodValue).then(response => {
-                let headers = response.headers.get('Content-Type')
-                console.log(response.headers.get('Content-Type'));
-                if (headers==  'video/mp4') {
-                    img.src = prodValue.replace('content', 'image');
+                this.setValue(src);
+
+                let srcValue = src.preview_src;
+                let name = srcValue.split('/').pop();
+
+                if(name) {
+                    mediaName.innerHTML = `
+                        <div class="b-image-property_label">${mediaTypeName}</div>
+                        <div class="b-image-property_value">${name}</div>
+                    `;
                 }
-            });
-
-            this.setValue(prodValue);
-            let name = src.split('/').pop();
-            if(name) {
-                mediaName.innerHTML = `
-                    <div class="b-image-property_label">${mediaTypeName}</div>
-                    <div class="b-image-property_value">${name}</div>
-                `;
+                    this.closePopup();
+                } catch (error) {
+                console.error('Error selecting image:', error);
+                //alert('Error selecting image');
             }
-            this.closePopup();
-
-        } catch (error) {
-            console.error('Error selecting image:', error);
-            alert('Error selecting image');
         }
     }
 
@@ -145,6 +138,7 @@ class Extension {
     }
 }
 
+/*  start search block    */
 async function fetchFolders(folderID) {
     const qstring = folderID ? `?folderID=/${encodeURIComponent(folderID)}`:'';
     try {
@@ -200,18 +194,34 @@ async function fetchAssets(folderID = '', page = 1) {
     nextBtn.dataset.folder = folderID;
 }
 
-(async function  () {
-	try {
-      new Extension(await dcExtensionsSdk.init())
-    } catch (e) {
-      document.body.innerHTML = 'Failed to connect'
-    }
-})()
 
-// Upload
-const uploadPopup = document.getElementById('uploadPopup');
-const closeUploadPopupBtn = document.getElementById('closeUploadPopupBtn');
-const uploadForm = document.getElementById('uploadForm');
+async function searchByText({ keyword, folderPath = '', page = 1 }) {
+    loader.style.display = 'block';
+    try {
+        const queryParams = new URLSearchParams({ keyword, folderPath, page, video }).toString();
+        const response = await fetch(`/search-by-text?${queryParams}`);
+        if (!response || !response.ok) {
+            throw new Error('Failed to fetch search results');
+        }
+
+        const data = await response.json();
+        if (!data) {
+            throw new Error('No data received from server');
+        }
+        const { assets = [], currentPage = 1, pageCount = 1 } = data;
+
+        renderImages(assets, currentPage, pageCount);
+    } catch (error) {
+        console.error('Error during search by text:', error);
+        imagesContainer.innerHTML = `<p>Error: ${error.message}</p>`;
+    } finally {
+        loader.style.display = 'none';
+    }
+    prevBtn.dataset.function = 'searchByText';
+    nextBtn.dataset.function = 'searchByText';
+}
+
+/*  start listeners block    */
 
 uploadBtn.addEventListener('click', () => {
     uploadPopup.style.display = 'block';
@@ -305,34 +315,7 @@ function showFolderPanel() {
 }
 
 document.getElementById('cancelBtn').addEventListener('click', showFolderPanel);
-
 searchTxt.addEventListener('click', showSearchPanel);
-
-async function searchByText({ keyword, folderPath = '', page = 1 }) {
-    loader.style.display = 'block';
-    try {
-        const queryParams = new URLSearchParams({ keyword, folderPath, page, video }).toString();
-        const response = await fetch(`/search-by-text?${queryParams}`);
-        if (!response || !response.ok) {
-        throw new Error('Failed to fetch search results');
-        }
-
-        const data = await response.json();
-        if (!data) {
-            throw new Error('No data received from server');
-        }
-        const { assets = [], currentPage = 1, pageCount = 1 } = data;
-
-        renderImages(assets, currentPage, pageCount);
-    } catch (error) {
-        console.error('Error during search by text:', error);
-        imagesContainer.innerHTML = `<p>Error: ${error.message}</p>`;
-    } finally {
-        loader.style.display = 'none';
-    }
-    prevBtn.dataset.function = 'searchByText';
-    nextBtn.dataset.function = 'searchByText';
-}
 
 searchBtn.addEventListener('click', () => {
     const keyword = searchInput.value.trim();
@@ -345,7 +328,7 @@ searchBtn.addEventListener('click', () => {
     }
 });
 
-// reusing rendering
+// rendering
 function renderImages(assets, currentPage, totalPages) {
     imagesContainer.innerHTML = '';
     if (!assets || assets.length === 0) {
@@ -355,10 +338,16 @@ function renderImages(assets, currentPage, totalPages) {
 
     assets.forEach((item) => {
         const imgElement = document.createElement('img');
-        imgElement.src = item.fullUrl;
+        imgElement.src = item.assetStgUrl;
         imgElement.className = 'image-option';
+
         imgElement.dataset.prodUrl = item.assetProdUrl;
-        imgElement.setAttribute('data-src', item.fullUrl);
+        imgElement.dataset.stgUrl = item.assetStgUrl;
+        imgElement.dataset.width = item.assetWidth;
+        imgElement.dataset.height = item.assetHeight;
+        imgElement.dataset.fileName = item.name;
+
+        imgElement.setAttribute('data-src', item.assetStgUrl);
 
         const imgWrapper = document.createElement('div');
         imgWrapper.className = 'image-wrapper';
@@ -401,3 +390,65 @@ function enableUpload() {
 }
 
 searchFld.addEventListener('click', showFolderPanel);
+
+async function createImageObject(data) {
+    let fileName = data.fileName;
+    let nameArray = fileName.split('_');
+    let size = nameArray.pop();
+    let modifiers =[];
+    let sazesArray = ['SM', 'MD', 'LG', 'XL'];
+
+    if ((sazesArray.indexOf(size)!==-1)&&video==false) {
+
+        let queryText = nameArray.join('_');
+        // avoiding searchin all assets
+        if (queryText.length > 0) {
+            const response = await fetch(`/search-by-text?keyword=${queryText}`);
+
+            if (!response || !response.ok) {
+                throw new Error('Failed to fetch search results');
+            }
+
+            const resp = await response.json();
+            if (!resp) {
+                throw new Error('No data received from server');
+            }
+
+            const { assets = [] } = resp;
+
+
+            assets.forEach(asset => {
+                let nameArray = asset.assetProdUrl.split('_');
+                let size = nameArray.pop();
+
+                if (sazesArray.indexOf(size)!==-1) {
+                    let sizeData = {
+                        prodsrc: asset.assetProdUrl,
+                        stgsrc: asset.assetStgUrl,
+                        width: asset.assetWidth,
+                        height: asset.assetHeight,
+                    }
+
+                    modifiers.push(sizeData);
+                }
+            });
+        }
+    }
+
+    return {
+        "images": modifiers,
+        "preview_src": data.stgUrl,
+        "defaultProd_src": data.prodUrl,
+        "default_width": data.width||'',
+        "default_height": data.height||'',
+    };
+}
+
+
+(async function  () {
+	try {
+      new Extension(await dcExtensionsSdk.init())
+    } catch (e) {
+      document.body.innerHTML = 'Failed to connect'
+    }
+})()

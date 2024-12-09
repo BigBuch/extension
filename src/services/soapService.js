@@ -139,7 +139,10 @@ async function searchAssets(fld, page, video) {
             return {};
         }
         let parsedAssets = [];
-        let prodUrl = video==='true' ? videoProdURL: imageProdURL;
+        let isImage = !(video==='true');
+        let prodUrl = isImage ? imageProdURL : videoProdURL ;
+
+
         if (Array.isArray(assets)) {
             parsedAssets = assets.map(asset => ({
                 type: asset.type,
@@ -147,7 +150,10 @@ async function searchAssets(fld, page, video) {
                 fileName: asset.fileName,
                 assetProdUrl: prodUrl + asset.ipsImageUrl,
                 folder: asset.folder,
-                fullUrl: imageUrl + asset.ipsImageUrl,
+                assetStgUrl: imageUrl + asset.ipsImageUrl,
+                assetWidth: asset.imageInfo && isImage ? asset.imageInfo.width:'',
+                assetHeight: asset.imageInfo && isImage ? asset.imageInfo.height:''
+
             }));
         } else {
             parsedAssets = [{
@@ -157,6 +163,9 @@ async function searchAssets(fld, page, video) {
                 assetProdUrl: prodUrl + assets.ipsImageUrl,
                 folder: assets.folder,
                 fullUrl: imageUrl + assets.ipsImageUrl,
+                assetStgUrl: imageUrl + assets.ipsImageUrl,
+                assetWidth: assets.imageInfo && isImage ? assets.imageInfo.width:'',
+                assetHeight: assets.imageInfo && isImage ? assets.imageInfo.height:''
             }];
         }
 
@@ -271,11 +280,10 @@ function buildGetSearchAssetsParamXML(folderPath, recordsPerPage = 12, resultsPa
     return actionPayload;
 }
 
-async function searchByKeyword(keyword, folderPath = '', page = 1, recordsPerPage = 12, video = false) {
+async function searchByKeyword(keyword, folderPath = rootFldr, page = 1, recordsPerPage = 12, video = false) {
     const typeArray = (video === 'true') ? 'Video' : 'Image';
     const includeSubfolders = true;
     const header = createHeader()
-
     const requestXML = `
         <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
             ${header}
@@ -313,24 +321,32 @@ async function searchByKeyword(keyword, folderPath = '', page = 1, recordsPerPag
         const assets = searchResult['assetArray']['items'];
         const totalItems = searchResult['totalRows'];
         const pageCount = Math.ceil(totalItems / recordsPerPage);
+        let isImage = !(video==='true');
+        let prodUrl =isImage ? imageProdURL : videoProdURL;
 
-        let prodUrl = video==='true' ? config.videoProdURL: config.imageProdURL;
+        console.log(prodUrl);
 
         const parsedAssets = Array.isArray(assets) ? assets.map(asset => ({
             type: asset.type,
             name: asset.name,
             fileName: asset.fileName,
-            folder: asset.folder,
             assetProdUrl: prodUrl + asset.ipsImageUrl,
-            fullUrl: `${imageUrl}${asset.ipsImageUrl}`,
+            folder: asset.folder,
+            assetStgUrl: imageUrl + asset.ipsImageUrl,
+            assetWidth: asset.imageInfo && isImage ? asset.imageInfo.width:'',
+            assetHeight: asset.imageInfo && isImage ? asset.imageInfo.height:''
         })) : [{
             type: assets.type,
             name: assets.name,
             fileName: assets.fileName,
-            folder: assets.folder,
             assetProdUrl: prodUrl + assets.ipsImageUrl,
-            fullUrl: `${imageUrl}${assets.ipsImageUrl}`,
+            folder: assets.folder,
+            fullUrl: imageUrl + assets.ipsImageUrl,
+            assetStgUrl: imageUrl + assets.ipsImageUrl,
+            assetWidth: assets.imageInfo && isImage ? assets.imageInfo.width:'',
+            assetHeight: assets.imageInfo && isImage ? assets.imageInfo.height:''
         }];
+
 
         return { assets: parsedAssets, currentPage: page, pageCount };
     } catch (error) {
