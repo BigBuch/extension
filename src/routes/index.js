@@ -3,8 +3,30 @@ const router = express.Router();
 const multer = require('multer');
 const { searchAssets, searchFolders, uploadFile, searchByKeyword} = require('../services/soapService');
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
+
+const upload = multer({
+    storage,
+    limits: {
+    fileSize: 50 * 1024 * 1024
+}});
+
+const cors = require('cors');
+
+
+const allowedDomains = ['https://amplience.net'];
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (allowedDomains.includes(origin) || !origin) {
+            callback(null, true);
+        } else {
+            console.log('Origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
+};
+
+router.use(cors());
 
 router.get('/search-assets', async (req, res) => {
     try {
@@ -16,7 +38,7 @@ router.get('/search-assets', async (req, res) => {
     }
 });
 
-// Роут для пошуку папок
+
 router.get('/search-folders', async (req, res) => {
     try {
         const { folderID } = req.query;
@@ -49,7 +71,7 @@ router.post('/upload-file', upload.fields([{ name: 'file', maxCount: 1 }, { name
 
 router.get('/search-by-text', async (req, res) => {
     try {
-        const { keyword, folderPath, page, video} = req.query;
+        const { keyword, folderPath, page = 1, video} = req.query;
         const result = await searchByKeyword(keyword, folderPath, page, recordsPerPage=10, video);
         res.send(result);
     } catch (error) {

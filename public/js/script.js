@@ -20,32 +20,40 @@ const deleteImageBtn = document.getElementById('deleteImageBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const openPopupBtn = document.getElementById('openPopupBtn');
 const imageContainer = document.getElementById('imageContainer');
+const uploadPopup = document.getElementById('uploadPopup');
+const closeUploadPopupBtn = document.getElementById('closeUploadPopupBtn');
+const uploadForm = document.getElementById('uploadForm');
+
 let video;
+let mediaTypeName;
+
 class Extension {
     constructor(sdk) {
         this.sdk = sdk;
         this.init();
     }
-
     init = () => {
         this.setupEventListeners();
         if (this.sdk.params) {
             video = this.sdk.params.instance.video ? this.sdk.params.instance.video: false;
-            mediaType.innerHTML = video ? 'Video' : 'Image';
+            mediaTypeName = video ? 'Video' : 'Image'
+            mediaType.innerHTML = mediaTypeName;
             openPopupBtn.innerHTML = video ? 'Open Video picker' : 'Open Image picker';
         }
         this.loadCurrentValue();
+        this.sdk.frame.setHeight(110);
     }
 
     setupEventListeners = () => {
         openPopupBtn.addEventListener('click', this.openPopup);
         cancelBtn.addEventListener('click', this.closePopup);
         deleteImageBtn.addEventListener('click', this.deleteValue);
-        imagesContainer.addEventListener('click', (event) => {
-            if (event.target.classList.contains('image-option')) {
-                const imgSrc = event.target.dataset.src;
-                const prodSrc = event.target.dataset.prodUrl;
-                this.selectImage(imgSrc, prodSrc);
+
+        imagesContainer.addEventListener('click', async (event) => {
+            if (event.target.closest('.image-item_hover')) {
+                const imageWrapper = event.target.closest('.image-item').querySelector('.image-option');
+                let imageObject =  await createImageObject(imageWrapper.dataset);
+                this.selectImage(imageObject);
             }
         });
         folderStructure.addEventListener('click', (event) => {
@@ -55,6 +63,7 @@ class Extension {
             }
         });
     }
+
     fillPopup = async (folderID) => {
         loader.style.display = 'block';
         await Promise.all([fetchAssets(folderID), fetchFolders(folderID)]);
@@ -65,12 +74,14 @@ class Extension {
         imagesContainer.innerHTML = '';
         popup.style.display = 'block';
         folderStructure.style.display = 'block';
+        this.sdk.frame.setHeight(696)
         await this.fillPopup();
-        this.sdk.frame.setHeight(600)
     }
+
     closePopup = () => {
         document.getElementById('popup').style.display = 'none';
         folderStructure.style.display = 'none';
+        this.sdk.frame.setHeight(110)
     }
 
     setValue = async (value) => {
@@ -78,36 +89,40 @@ class Extension {
     }
 
     deleteValue = async () => {
-        await this.sdk.field.setValue('');
+        await this.sdk.field.setValue({
+            "images": [],
+            "preview_src":"",
+            "defaultProd_src":""
+        });
         imageContainer.innerHTML = '';
-        mediaName.innerHTML = '';
+        mediaName.innerHTML = ""
     }
-    selectImage = async (src, prodSrc) => {
-        try {
-            const img = document.createElement('img');
-            img.src = src;
-            let prodValue = prodSrc ? prodSrc : src;
-            img.id = 'selectedImage';
-            imageContainer.innerHTML = '';
-            imageContainer.appendChild(img);
+    selectImage = async (src) => {
+        if (src.preview_src) {
+            try {
+                const img = document.createElement('img');
+                img.src = src.preview_src;
+                img.id = 'selectedImage';
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(img);
 
-            fetch(prodValue).then(response => {
-                let headers = response.headers.get('Content-Type')
-                console.log(response.headers.get('Content-Type'));
-                if (headers==  'video/mp4') {
-                    img.src = prodValue.replace('content', 'image');
+
+                this.setValue(src);
+
+                let srcValue = src.preview_src;
+                let name = srcValue.split('/').pop();
+
+                if(name) {
+                    mediaName.innerHTML = `
+                        <div class="b-image-property_label">${mediaTypeName}</div>
+                        <div class="b-image-property_value">${name}</div>
+                    `;
                 }
-            });
-
-            this.setValue(prodValue);
-            let name = src.split('/').pop();
-            mediaName.innerHTML = name;
-            this.closePopup();
-            this.sdk.frame.setHeight(300)
-
-        } catch (error) {
-            console.error('Error selecting image:', error);
-            alert('Error selecting image');
+                    this.closePopup();
+                } catch (error) {
+                console.error('Error selecting image:', error);
+                //alert('Error selecting image');
+            }
         }
     }
 
@@ -122,6 +137,8 @@ class Extension {
         }
     }
 }
+
+/*  start search block    */
 async function fetchFolders(folderID) {
     const qstring = folderID ? `?folderID=/${encodeURIComponent(folderID)}`:'';
     try {
@@ -131,12 +148,9 @@ async function fetchFolders(folderID) {
         const ul = document.createElement('ul');
         ul.classList.add('folder-list');
         const folderIcon = `
-        <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="16" viewBox="0 0 48 48">
-            <path fill="#ffa000" d="M40,12H22l-4-4H8c-2.2,0-4,1.8-4,4v24c0,2.2,1.8,4,4,4h29.7L44,29V16C44,13.8,42.2,12,40,12z"></path>
-            <path fill="#ffca28" d="M40,12H8c-2.2,0-4,1.8-4,4v20c0,2.2,1.8,4,4,4h32c2.2,0,4-1.8,4-4V16C44,13.8,42.2,12,40,12z"></path>
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v400q0 33-23.5 56.5T800-160H160Zm0-80h640v-400H447l-80-80H160v480Zm0 0v-480 480Z"/></svg>
         `;
-        const openedFolderIcon = `<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 48 48" width="20px" height="20px"><linearGradient id="xGIh33lbYX9pWIYWeZsuka" x1="24" x2="24" y1="6.955" y2="23.167" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#eba600"/><stop offset="1" stop-color="#c28200"/></linearGradient><path fill="url(#xGIh33lbYX9pWIYWeZsuka)" d="M24.414,10.414l-2.536-2.536C21.316,7.316,20.553,7,19.757,7H5C3.895,7,3,7.895,3,9v30	c0,1.105,0.895,2,2,2h38c1.105,0,2-0.895,2-2V13c0-1.105-0.895-2-2-2H25.828C25.298,11,24.789,10.789,24.414,10.414z"/><linearGradient id="xGIh33lbYX9pWIYWeZsukb" x1="24.066" x2="24.066" y1="19.228" y2="33.821" gradientTransform="matrix(-1 0 0 1 48 0)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffd869"/><stop offset="1" stop-color="#fec52b"/></linearGradient><path fill="url(#xGIh33lbYX9pWIYWeZsukb)" d="M24,23l3.854-3.854C27.947,19.053,28.074,19,28.207,19H44.81c1.176,0,2.098,1.01,1.992,2.181	l-1.636,18C45.072,40.211,44.208,41,43.174,41H4.79c-1.019,0-1.875-0.766-1.988-1.779L1.062,23.555C1.029,23.259,1.261,23,1.559,23	H24z"/></svg>`
+        const openedFolderIcon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640H447l-80-80H160v480l96-320h684L837-217q-8 26-29.5 41.5T760-160H160Zm84-80h516l72-240H316l-72 240Zm0 0 72-240-72 240Zm-84-400v-80 80Z"/></svg>`
 
         folders.forEach(folder => {
             const folderItem = document.createElement('li');
@@ -159,6 +173,7 @@ async function fetchFolders(folderID) {
         console.error('Error fetching folders:', error);
     }
 }
+
 async function fetchAssets(folderID = '', page = 1) {
     loader.style.display = 'block';
     try {
@@ -177,21 +192,36 @@ async function fetchAssets(folderID = '', page = 1) {
     prevBtn.dataset.folder = folderID;
     nextBtn.dataset.function = 'fetchAssets';
     nextBtn.dataset.folder = folderID;
-
 }
 
-(async function  () {
-	try {
-      new Extension(await dcExtensionsSdk.init())
-    } catch (e) {
-      document.body.innerHTML = 'Failed to connect'
-    }
-})()
 
-// Upload
-const uploadPopup = document.getElementById('uploadPopup');
-const closeUploadPopupBtn = document.getElementById('closeUploadPopupBtn');
-const uploadForm = document.getElementById('uploadForm');
+async function searchByText({ keyword, folderPath = '', page = 1 }) {
+    loader.style.display = 'block';
+    try {
+        const queryParams = new URLSearchParams({ keyword, folderPath, page, video }).toString();
+        const response = await fetch(`/search-by-text?${queryParams}`);
+        if (!response || !response.ok) {
+            throw new Error('Failed to fetch search results');
+        }
+
+        const data = await response.json();
+        if (!data) {
+            throw new Error('No data received from server');
+        }
+        const { assets = [], currentPage = 1, pageCount = 1 } = data;
+
+        renderImages(assets, currentPage, pageCount);
+    } catch (error) {
+        console.error('Error during search by text:', error);
+        imagesContainer.innerHTML = `<p>Error: ${error.message}</p>`;
+    } finally {
+        loader.style.display = 'none';
+    }
+    prevBtn.dataset.function = 'searchByText';
+    nextBtn.dataset.function = 'searchByText';
+}
+
+/*  start listeners block    */
 
 uploadBtn.addEventListener('click', () => {
     uploadPopup.style.display = 'block';
@@ -240,7 +270,6 @@ uploadForm.addEventListener('submit', async (event) => {
     }
 });
 
-
 // Paginator
 prevBtn.addEventListener('click', () => {
     const currentFunction = prevBtn.dataset.function;
@@ -268,10 +297,11 @@ nextBtn.addEventListener('click', () => {
     }
 });
 
-
 function showSearchPanel() {
     folderStructure.style.display = 'none';
     searchPanel.style.display = 'block';
+    searchFld.classList.remove('active');
+    searchTxt.classList.add('active');
     searchInput.value = '';
     disableUpload();
 }
@@ -279,40 +309,13 @@ function showSearchPanel() {
 function showFolderPanel() {
     searchPanel.style.display = 'none';
     folderStructure.style.display = 'block';
+    searchFld.classList.add('active');
+    searchTxt.classList.remove('active');
     enableUpload();
 }
 
 document.getElementById('cancelBtn').addEventListener('click', showFolderPanel);
-
 searchTxt.addEventListener('click', showSearchPanel);
-
-
-async function searchByText({ keyword, folderPath = '', page = 1 }) {
-    loader.style.display = 'block';
-    try {
-        const queryParams = new URLSearchParams({ keyword, folderPath, page, video }).toString();
-        const response = await fetch(`/search-by-text?${queryParams}`);
-        if (!response || !response.ok) {
-        throw new Error('Failed to fetch search results');
-        }
-
-        const data = await response.json();
-        if (!data) {
-            throw new Error('No data received from server');
-        }
-        const { assets = [], currentPage = 1, pageCount = 1 } = data;
-
-        renderImages(assets, currentPage, pageCount);
-    } catch (error) {
-        console.error('Error during search by text:', error);
-        imagesContainer.innerHTML = `<p>Error: ${error.message}</p>`;
-    } finally {
-        loader.style.display = 'none';
-    }
-    prevBtn.dataset.function = 'searchByText';
-    nextBtn.dataset.function = 'searchByText';
-}
-
 
 searchBtn.addEventListener('click', () => {
     const keyword = searchInput.value.trim();
@@ -325,7 +328,7 @@ searchBtn.addEventListener('click', () => {
     }
 });
 
-// reusing rendering
+// rendering
 function renderImages(assets, currentPage, totalPages) {
     imagesContainer.innerHTML = '';
     if (!assets || assets.length === 0) {
@@ -335,10 +338,16 @@ function renderImages(assets, currentPage, totalPages) {
 
     assets.forEach((item) => {
         const imgElement = document.createElement('img');
-        imgElement.src = item.fullUrl;
+        imgElement.src = item.assetStgUrl;
         imgElement.className = 'image-option';
+
         imgElement.dataset.prodUrl = item.assetProdUrl;
-        imgElement.setAttribute('data-src', item.fullUrl);
+        imgElement.dataset.stgUrl = item.assetStgUrl;
+        imgElement.dataset.width = item.assetWidth;
+        imgElement.dataset.height = item.assetHeight;
+        imgElement.dataset.fileName = item.name;
+
+        imgElement.setAttribute('data-src', item.assetStgUrl);
 
         const imgWrapper = document.createElement('div');
         imgWrapper.className = 'image-wrapper';
@@ -348,7 +357,19 @@ function renderImages(assets, currentPage, totalPages) {
         imgItem.className = 'image-item';
         imgItem.innerHTML = `<div class="image-name">${item.name}</div>`;
 
-        imagesContainer.appendChild(imgItem).appendChild(imgWrapper);
+        const imgItemHover = document.createElement('div');
+        imgItemHover.className = 'image-item_hover';
+        imgItemHover.innerHTML = `
+            <div class="image-item_hover_icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 51.4 51.4" fill="none" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false">
+                    <circle class="circle" r="22.7" cx="25.7" cy="25.7" stroke-width="2" stroke="currentColor"></circle>
+                    <path class="plus" d="M26.7,24.7h9.5 v2h-9.5v9.5h-2v-9.5h-9.5v-2h9.5v-9.5h2V24.7z" fill="currentColor"></path>
+                </svg>
+            </div>
+        `;
+        imgItem.appendChild(imgWrapper);
+
+        imagesContainer.appendChild(imgItem).appendChild(imgItemHover);
     });
 
     currentPageElement.innerText = `${currentPage} of ${totalPages}`;
@@ -357,7 +378,6 @@ function renderImages(assets, currentPage, totalPages) {
     prevBtn.dataset.page = +currentPage - 1;
     nextBtn.dataset.page = +currentPage + 1;
 }
-
 
 function disableUpload() {
     uploadBtn.disabled = true;
@@ -370,3 +390,65 @@ function enableUpload() {
 }
 
 searchFld.addEventListener('click', showFolderPanel);
+
+async function createImageObject(data) {
+    let fileName = data.fileName;
+    let nameArray = fileName.split('_');
+    let size = nameArray.pop();
+    let modifiers =[];
+    let sazesArray = ['SM', 'MD', 'LG', 'XL'];
+
+    if ((sazesArray.indexOf(size)!==-1)&&video==false) {
+
+        let queryText = nameArray.join('_');
+        // avoiding searchin all assets
+        if (queryText.length > 0) {
+            const response = await fetch(`/search-by-text?keyword=${queryText}`);
+
+            if (!response || !response.ok) {
+                throw new Error('Failed to fetch search results');
+            }
+
+            const resp = await response.json();
+            if (!resp) {
+                throw new Error('No data received from server');
+            }
+
+            const { assets = [] } = resp;
+
+
+            assets.forEach(asset => {
+                let nameArray = asset.assetProdUrl.split('_');
+                let size = nameArray.pop();
+
+                if (sazesArray.indexOf(size)!==-1) {
+                    let sizeData = {
+                        prodsrc: asset.assetProdUrl,
+                        stgsrc: asset.assetStgUrl,
+                        width: asset.assetWidth,
+                        height: asset.assetHeight,
+                    }
+
+                    modifiers.push(sizeData);
+                }
+            });
+        }
+    }
+
+    return {
+        "images": modifiers,
+        "preview_src": data.stgUrl,
+        "defaultProd_src": data.prodUrl,
+        "default_width": data.width||'',
+        "default_height": data.height||'',
+    };
+}
+
+
+(async function  () {
+	try {
+      new Extension(await dcExtensionsSdk.init())
+    } catch (e) {
+      document.body.innerHTML = 'Failed to connect'
+    }
+})()
